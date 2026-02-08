@@ -1,0 +1,4 @@
+class AppConstants {
+  AppConstants._();
+
+}
