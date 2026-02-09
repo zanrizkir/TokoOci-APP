@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'package:tokooci_app/core/utils/app_input_vaidators.dart';
+import 'package:tokooci_app/core/utils/app_input_vaildators.dart';
 import '../../config/constants/api_constants.dart';
 import '../../config/routes/app_routes.dart';
 import '../../config/theme/app_theme.dart';
@@ -21,6 +21,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
+  
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
@@ -80,21 +82,8 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = '';
     });
 
-    // Validate email
-    final emailError = AppInputValidators.email(emailController.text);
-    if (emailError != null) {
-      setState(() {
-        _errorMessage = emailError;
-      });
-      return;
-    }
-
-    // Validate password
-    final passwordError = AppInputValidators.password(passwordController.text);
-    if (passwordError != null) {
-      setState(() {
-        _errorMessage = passwordError;
-      });
+    // Validate form
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
@@ -189,7 +178,6 @@ class _LoginScreenState extends State<LoginScreen> {
             child: _bubble(200, opacity: 0.12),
           ),
 
-          /// CONTENT
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,20 +226,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const Spacer(),
 
-                /// FORM SECTION
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(28),
-                      ),
+                /// FORM SECTION - DISESUAIKAN DENGAN REGISTER SCREEN
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+                  height: MediaQuery.of(context).size.height * 0.65,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(28),
                     ),
+                  ),
+                  child: Form(
+                    key: _formKey,
                     child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           // Error Message
                           if (_errorMessage.isNotEmpty)
@@ -280,112 +269,34 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
 
-                          // Email Field dengan styling manual
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: Text(
-                              'Email',
-                              style: darkTextStyle.copyWith(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey[700],
-                              ),
-                            ),
+                          AppInputField(
+                            controller: emailController,
+                            label: 'Email',
+                            hintText: 'Masukan alamat E-mail',
+                            validator: AppInputValidators.email,
                           ),
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[50],
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: _errorMessage.isNotEmpty && _errorMessage.contains('email')
-                                    ? Colors.red
-                                    : Colors.grey[200]!,
-                                width: 1.5,
+                          const SizedBox(height: 16),
+                          AppInputField(
+                            controller: passwordController,
+                            label: 'Password',
+                            hintText: 'Password',
+                            obscureText: _isHidden,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _isHidden ? Iconsax.eye_slash : Iconsax.eye,
+                                size: 20,
+                                color: dark,
                               ),
+                              onPressed: () {
+                                setState(() {
+                                  _isHidden = !_isHidden;
+                                });
+                              },
                             ),
-                            child: TextField(
-                              controller: emailController,
-                              decoration: InputDecoration(
-                                border: InputBorder.none,
-                                hintText: 'example@gmail.com',
-                                hintStyle: TextStyle(
-                                  color: Colors.grey[500],
-                                  fontSize: 16,
-                                ),
-                              ),
-                              style: darkTextStyle.copyWith(
-                                fontSize: 16,
-                              ),
-                              keyboardType: TextInputType.emailAddress,
-                              textInputAction: TextInputAction.next,
-                            ),
+                            validator: AppInputValidators.password,
                           ),
 
                           const SizedBox(height: 16),
-
-                          // Password Field dengan styling manual
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: Text(
-                              'Password',
-                              style: darkTextStyle.copyWith(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                          ),
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[50],
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: _errorMessage.isNotEmpty && _errorMessage.contains('password')
-                                    ? Colors.red
-                                    : Colors.grey[200]!,
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: passwordController,
-                                    obscureText: _isHidden,
-                                    decoration: InputDecoration(
-                                      border: InputBorder.none,
-                                      hintText: 'Password',
-                                      hintStyle: TextStyle(
-                                        color: Colors.grey[500],
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    style: darkTextStyle.copyWith(
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _isHidden = !_isHidden;
-                                    });
-                                  },
-                                  icon: Icon(
-                                    _isHidden ? Iconsax.eye_slash : Iconsax.eye,
-                                    size: 20,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
 
                           // Remember Me Checkbox
                           Row(
@@ -423,108 +334,79 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
 
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 24),
 
                           /// LOGIN BUTTON
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _login,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: primary,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                      ),
-                                    )
-                                  : Text(
-                                      'Masuk',
-                                      style: lightTextStyle.copyWith(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                            ),
+                          AppButton(
+                            text: 'Masuk',
+                            onPressed: _isLoading ? null : _login,
+                            isLoading: _isLoading,
                           ),
 
                           const SizedBox(height: 24),
 
-                          /// REGISTER
-                          Center(
-                            child: RichText(
-                              text: TextSpan(
-                                style: darkTextStyle.copyWith(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
-                                children: [
-                                  const TextSpan(text: 'Belum punya akun? '),
-                                  TextSpan(
-                                    text: 'Daftar',
-                                    style: darkTextStyle.copyWith(
-                                      fontWeight: semiBold,
-                                      color: primary,
-                                    ),
-                                    recognizer: TapGestureRecognizer()
-                                      ..onTap = () {
-                                        Navigator.pushNamed(
-                                          context,
-                                          AppRoutes.register,
-                                        );
-                                      },
+                          /// REGISTER LINK
+                          RichText(
+                            textAlign: TextAlign.center,
+                            text: TextSpan(
+                              style: darkTextStyle.copyWith(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                              children: [
+                                const TextSpan(text: 'Belum punya akun? '),
+                                TextSpan(
+                                  text: 'Daftar',
+                                  style: darkTextStyle.copyWith(
+                                    fontWeight: semiBold,
+                                    color: primary,
                                   ),
-                                ],
-                              ),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () {
+                                      Navigator.pushNamed(
+                                        context,
+                                        AppRoutes.register,
+                                      );
+                                    },
+                                ),
+                              ],
                             ),
                           ),
 
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 20),
 
                           // Terms & Privacy
-                          Center(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: RichText(
-                                textAlign: TextAlign.center,
-                                text: TextSpan(
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
-                                    height: 1.4,
-                                  ),
-                                  children: [
-                                    const TextSpan(text: 'Dengan masuk, Anda menyetujui '),
-                                    TextSpan(
-                                      text: 'Syarat & Ketentuan',
-                                      style: TextStyle(
-                                        color: primary,
-                                        fontWeight: FontWeight.w600,
-                                        decoration: TextDecoration.underline,
-                                      ),
-                                    ),
-                                    const TextSpan(text: ' serta '),
-                                    TextSpan(
-                                      text: 'Kebijakan Privasi',
-                                      style: TextStyle(
-                                        color: primary,
-                                        fontWeight: FontWeight.w600,
-                                        decoration: TextDecoration.underline,
-                                      ),
-                                    ),
-                                    const TextSpan(text: ' kami'),
-                                  ],
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: RichText(
+                              textAlign: TextAlign.center,
+                              text: TextSpan(
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                  height: 1.4,
                                 ),
+                                children: [
+                                  const TextSpan(text: 'Dengan masuk, Anda menyetujui '),
+                                  TextSpan(
+                                    text: 'Syarat & Ketentuan',
+                                    style: TextStyle(
+                                      color: primary,
+                                      fontWeight: FontWeight.w600,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                  const TextSpan(text: ' serta '),
+                                  TextSpan(
+                                    text: 'Kebijakan Privasi',
+                                    style: TextStyle(
+                                      color: primary,
+                                      fontWeight: FontWeight.w600,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                  const TextSpan(text: ' kami'),
+                                ],
                               ),
                             ),
                           ),

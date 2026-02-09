@@ -1,11 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:tokooci_app/core/services/api_service.dart';
 
+import '../../config/constants/api_constants.dart';
 import '../../config/routes/app_routes.dart';
 import '../../config/theme/app_theme.dart';
-import '../../core/utils/app_input_vaidators.dart';
+import '../../core/utils/app_input_vaildators.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_input_field.dart';
 
@@ -24,8 +27,80 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
 
+  final ApiService _apiService = ApiService();
+
   bool _isHidden1 = true;
   bool _isHidden2 = true;
+  bool _isLoading = false;
+  String _errorMessage = '';
+
+  Future<void> _register() async {
+    setState(() {
+      _errorMessage = '';
+    });
+
+    if (!_formKey.currentState!.validate()) return;
+
+    if (passwordController.text != confirmPasswordController.text) {
+      setState(() {
+        _errorMessage = 'Password dan konfirmasi password tidak sama';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await _apiService.post(
+        ApiConstants.register,
+        {
+          'name': nameController.text.trim(),
+          'email': emailController.text.trim(),
+          'password': passwordController.text,
+          'password_confirmation': confirmPasswordController.text,
+        },
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (data['success'] == true) {
+          if (!mounted) return;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Registrasi berhasil, silakan login'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          Navigator.pushReplacementNamed(context, AppRoutes.login);
+        } else {
+          setState(() {
+            _errorMessage = data['message'] ?? 'Registrasi gagal';
+          });
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        setState(() {
+          _errorMessage =
+              errorData['errors']?['email']?.first ??
+              errorData['message'] ??
+              'Terjadi kesalahan (${response.statusCode})';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Koneksi gagal: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,50 +115,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
-          /// BACKGROUND
           Container(color: primary),
 
-          /// BUBBLES
           Positioned(top: -120, left: -80, child: _bubble(220)),
           Positioned(top: 80, right: -60, child: _bubble(160, opacity: 0.15)),
-          Positioned(
-            bottom: -100,
-            left: -40,
-            child: _bubble(200, opacity: 0.12),
-          ),
+          Positioned(bottom: -100, left: -40, child: _bubble(200, opacity: 0.12)),
 
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /// HEADER
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       TextButton.icon(
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(
-                          Icons.arrow_back,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        label: const Text(
-                          'Kembali',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          foregroundColor: Colors.white,
-                        ),
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        label: const Text('Kembali',
+                            style: TextStyle(color: Colors.white)),
                       ),
-
                       const SizedBox(height: 16),
                       Text(
                         'Buat Akun',
@@ -103,29 +155,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 const Spacer(),
 
-                /// FORM
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
                   height: MediaQuery.of(context).size.height * 0.7,
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(28),
-                    ),
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(28)),
                   ),
                   child: Form(
                     key: _formKey,
                     child: SingleChildScrollView(
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
+                          if (_errorMessage.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              margin: const EdgeInsets.only(bottom: 16),
+                              decoration: BoxDecoration(
+                                color: Colors.red[50],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                _errorMessage,
+                                style: TextStyle(color: Colors.red[700]),
+                              ),
+                            ),
+
                           AppInputField(
                             controller: nameController,
                             label: 'Nama Lengkap',
-                            hintText: 'Masukan naa lengkap',
+                            hintText: 'Masukan nama lengkap',
                             validator: AppInputValidators.required,
                           ),
                           const SizedBox(height: 16),
+
                           AppInputField(
                             controller: emailController,
                             label: 'Email',
@@ -133,6 +197,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             validator: AppInputValidators.email,
                           ),
                           const SizedBox(height: 16),
+
                           AppInputField(
                             controller: passwordController,
                             label: 'Password',
@@ -140,52 +205,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             obscureText: _isHidden1,
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _isHidden1 ? Iconsax.eye_slash : Iconsax.eye,
-                                size: 20,
-                                color: dark,
+                                _isHidden1
+                                    ? Iconsax.eye_slash
+                                    : Iconsax.eye,
                               ),
-                              onPressed: () {
-                                setState(() {
-                                  _isHidden1 = !_isHidden1;
-                                });
-                              },
+                              onPressed: () =>
+                                  setState(() => _isHidden1 = !_isHidden1),
                             ),
                             validator: AppInputValidators.password,
                           ),
                           const SizedBox(height: 16),
+
                           AppInputField(
                             controller: confirmPasswordController,
-                            label: 'Konfirmasi password',
+                            label: 'Konfirmasi Password',
                             hintText: 'Konfirmasi Password',
                             obscureText: _isHidden2,
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _isHidden2 ? Iconsax.eye_slash : Iconsax.eye,
-                                size: 20,
-                                color: dark,
+                                _isHidden2
+                                    ? Iconsax.eye_slash
+                                    : Iconsax.eye,
                               ),
-                              onPressed: () {
-                                setState(() {
-                                  _isHidden2 = !_isHidden2;
-                                });
-                              },
+                              onPressed: () =>
+                                  setState(() => _isHidden2 = !_isHidden2),
                             ),
                             validator: AppInputValidators.password,
                           ),
+                          const SizedBox(height: 24),
 
-                          /// REGISTER BUTTON
                           AppButton(
                             text: 'Daftar',
-                            onPressed: () {
-                              if (_formKey.currentState!.validate()) {
-                                // TODO: register logic
-                              }
-                            },
+                            isLoading: _isLoading,
+                            onPressed: _isLoading ? null : _register,
                           ),
 
-                          /// LOGIN LINK
+                          const SizedBox(height: 16),
+
                           RichText(
-                            textAlign: TextAlign.center,
                             text: TextSpan(
                               style: darkTextStyle.copyWith(
                                 fontSize: 12,
@@ -202,9 +259,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   recognizer: TapGestureRecognizer()
                                     ..onTap = () {
                                       Navigator.pushReplacementNamed(
-                                        context,
-                                        AppRoutes.login,
-                                      );
+                                          context, AppRoutes.login);
                                     },
                                 ),
                               ],
@@ -223,7 +278,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  /// BUBBLE DECOR
   Widget _bubble(double size, {double opacity = 0.2}) {
     return Container(
       width: size,
@@ -233,5 +287,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         shape: BoxShape.circle,
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
   }
 }
